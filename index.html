@@ -63,31 +63,6 @@
                 <h3 id="order-title">Замовлення №</h3>
                 <div id="order-items-display"></div>
                 
-                <!-- Delivery Terms Selection (hidden by default) -->
-                <div id="delivery-terms-section" class="delivery-terms-section" style="display: none;">
-                    <h4>Терміни доставки:</h4>
-                    <div class="delivery-options">
-                        <label><input type="radio" name="delivery-term" value="7-10 робочих днів" checked> 7-10 робочих днів</label>
-                        <label><input type="radio" name="delivery-term" value="10-14 робочих днів"> 10-14 робочих днів</label>
-                        <label><input type="radio" name="delivery-term" value="custom"> 
-                            Інше: <input type="text" id="custom-delivery-term" placeholder="Введіть термін">
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- Prom Payment Details Section (hidden by default) -->
-                <div id="prom-payment-section" class="delivery-terms-section" style="display: none;">
-                    <h4>Деталі для оплати через Prom:</h4>
-                    <div class="form-group">
-                        <label for="prom-url">URL для оплати:</label>
-                        <input type="text" id="prom-url" placeholder="Введіть посилання для оплати">
-                    </div>
-                    <div class="form-group">
-                        <label for="prom-new-order-number">Новий номер замовлення:</label>
-                        <input type="text" id="prom-new-order-number" placeholder="Введіть новий номер замовлення">
-                    </div>
-                </div>
-                
                 <div class="text-generation">
                     <h4>Генерація тексту</h4>
                     <div class="button-grid">
@@ -130,6 +105,45 @@
                         <div class="modal-buttons">
                             <button class="gen-btn" onclick="generateCheckOrder()">Згенерувати чек</button>
                             <button class="cancel-btn" onclick="hideCheckOrderModal()">Скасувати</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Delivery Terms Modal (hidden by default) -->
+                <div id="delivery-terms-modal" class="check-order-modal" style="display: none;">
+                    <div class="modal-content">
+                        <h4>Терміни доставки</h4>
+                        <div class="delivery-options">
+                            <label><input type="radio" name="delivery-term" value="7-10 робочих днів" checked> 7-10 робочих днів</label>
+                            <label><input type="radio" name="delivery-term" value="10-14 робочих днів"> 10-14 робочих днів</label>
+                            <label><input type="radio" name="delivery-term" value="custom"> 
+                                Інше: <input type="text" id="custom-delivery-term" placeholder="Введіть термін">
+                            </label>
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button class="gen-btn" onclick="generateOrderOnlyFromModal()">Згенерувати текст</button>
+                            <button class="cancel-btn" onclick="hideDeliveryTermsModal()">Скасувати</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Prom Payment Modal (hidden by default) -->
+                <div id="prom-payment-modal" class="check-order-modal" style="display: none;">
+                    <div class="modal-content">
+                        <h4>Деталі для оплати через Prom</h4>
+                        <div class="form-group">
+                            <label for="modal-prom-url">URL для оплати:</label>
+                            <input type="text" id="modal-prom-url" placeholder="Введіть посилання для оплати">
+                        </div>
+                        <div class="form-group">
+                            <label for="modal-prom-new-order-number">Новий номер замовлення:</label>
+                            <input type="text" id="modal-prom-new-order-number" placeholder="Введіть новий номер замовлення">
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button class="gen-btn" onclick="generatePromPaymentFromModal()">Згенерувати текст</button>
+                            <button class="cancel-btn" onclick="hidePromPaymentModal()">Скасувати</button>
                         </div>
                     </div>
                 </div>

@@ -169,17 +169,9 @@ function viewOrder(orderNumber) {
     // Store current order for text generation BEFORE displaying items
     window.currentOrder = order;
     window.isEditing = false;
-
-    // Reset both sections to initial state
-    const deliverySection = document.getElementById('delivery-terms-section');
-    deliverySection.style.display = 'none';
     
-    const promSection = document.getElementById('prom-payment-section');
-    promSection.style.display = 'none';
-    
-    // Clear Prom payment inputs
-    document.getElementById('prom-url').value = '';
-    document.getElementById('prom-new-order-number').value = '';
+    // Save current order state to localStorage for persistence
+    localStorage.setItem('currentOrderNumber', order.orderNumber);
 
     // Update order view
     document.getElementById('order-title').textContent = `Замовлення №${orderNumber}`;
@@ -294,6 +286,8 @@ function showOrderView() {
 }
 
 function goBack() {
+    // Clear the persisted order state when user explicitly goes back
+    localStorage.removeItem('currentOrderNumber');
     showTab('search-order');
 }
 
@@ -421,32 +415,16 @@ function generateText(templateType) {
         return;
     }
 
-    // For order_only template, handle delivery terms selection
+    // For order_only template, show delivery terms modal
     if (templateType === 'order_only') {
-        const deliverySection = document.getElementById('delivery-terms-section');
-        
-        // If delivery section is not visible, show it WITHOUT error message
-        if (deliverySection.style.display === 'none' || !deliverySection.style.display) {
-            deliverySection.style.display = 'block';
-            return; // Just return without showing error message
-        }
-        
-        // Delivery section is visible, check if user has made a selection
-        // (this will be validated by getSelectedDeliveryTerm function)
+        showDeliveryTermsModal();
+        return;
     }
 
-    // For prom_payment template, handle Prom payment details section
+    // For prom_payment template, show Prom payment modal
     if (templateType === 'prom_payment') {
-        const promSection = document.getElementById('prom-payment-section');
-        
-        // If Prom section is not visible, show it WITHOUT error message
-        if (promSection.style.display === 'none' || !promSection.style.display) {
-            promSection.style.display = 'block';
-            return; // Just return without showing error message
-        }
-        
-        // Prom section is visible, check if user has filled the details
-        // (this will be validated by getPromPaymentDetails function)
+        showPromPaymentModal();
+        return;
     }
 
     const currentDate = new Date().toLocaleDateString('uk-UA', {
@@ -501,20 +479,9 @@ function generateText(templateType) {
         document.body.removeChild(textArea);
         showMessage('Текст скопійовано в буфер обміну!', 'success');
     });
-    
-    // Hide sections after generation
-    if (templateType === 'order_only') {
-        // Don't hide immediately to avoid layout shift, let user see the selection
-        // The section will be hidden when they navigate away or view another order
-        // document.getElementById('delivery-terms-section').style.display = 'none';
-    }
-    if (templateType === 'prom_payment') {
-        // Don't hide immediately to avoid layout shift
-        // document.getElementById('prom-payment-section').style.display = 'none';
-    }
 }
 
-// Get selected delivery term
+// Get selected delivery term from modal
 function getSelectedDeliveryTerm() {
     const selectedRadio = document.querySelector('input[name="delivery-term"]:checked');
     if (!selectedRadio) {
@@ -534,10 +501,10 @@ function getSelectedDeliveryTerm() {
     return selectedRadio.value;
 }
 
-// Get Prom payment details
+// Get Prom payment details from modal
 function getPromPaymentDetails() {
-    const urlInput = document.getElementById('prom-url').value.trim();
-    const newOrderNumber = document.getElementById('prom-new-order-number').value.trim();
+    const urlInput = document.getElementById('modal-prom-url').value.trim();
+    const newOrderNumber = document.getElementById('modal-prom-new-order-number').value.trim();
     
     if (!urlInput) {
         showMessage('Введіть URL для оплати', 'error');
@@ -614,6 +581,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (Object.keys(orders).length > 0) {
         console.log(`Завантажено ${Object.keys(orders).length} збережених замовлень`);
     }
+    
+    // Restore previous order view if it exists
+    const savedOrderNumber = localStorage.getItem('currentOrderNumber');
+    if (savedOrderNumber) {
+        const savedOrder = db.getOrder(savedOrderNumber);
+        if (savedOrder) {
+            // Store current order for text generation
+            window.currentOrder = savedOrder;
+            window.isEditing = false;
+            
+            // Update order view
+            document.getElementById('order-title').textContent = `Замовлення №${savedOrderNumber}`;
+            
+            // Display items with edit functionality
+            displayOrderItems(savedOrder);
+            
+            // Show order view
+            showOrderView();
+        } else {
+            // Order no longer exists, clear the saved state
+            localStorage.removeItem('currentOrderNumber');
+        }
+    }
 });
 
 // Check Order Modal Functions
@@ -633,6 +623,111 @@ function hideCheckOrderModal() {
     
     // Reset radio buttons
     document.querySelector('input[name="payment-type"][value="advance"]').checked = true;
+}
+
+// Delivery Terms Modal Functions
+function showDeliveryTermsModal() {
+    const modal = document.getElementById('delivery-terms-modal');
+    modal.style.display = 'block';
+    
+    // Reset to default selection
+    document.querySelector('input[name="delivery-term"][value="7-10 робочих днів"]').checked = true;
+    document.getElementById('custom-delivery-term').value = '';
+}
+
+function hideDeliveryTermsModal() {
+    const modal = document.getElementById('delivery-terms-modal');
+    modal.style.display = 'none';
+}
+
+function generateOrderOnlyFromModal() {
+    const deliveryTerm = getSelectedDeliveryTerm();
+    if (deliveryTerm === null) {
+        return; // Error already shown by getSelectedDeliveryTerm
+    }
+    
+    const currentDate = new Date().toLocaleDateString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+    });
+    
+    const originalPrices = null; // Could be implemented to track price changes
+    const generatedText = textTemplates['order_only'](window.currentOrder, currentDate, originalPrices, deliveryTerm);
+    
+    // Display generated text
+    const textDisplay = document.getElementById('generated-text');
+    textDisplay.textContent = generatedText;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(generatedText).then(() => {
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    }).catch(err => {
+        console.error('Помилка копіювання:', err);
+        showMessage('Помилка копіювання тексту', 'error');
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    });
+    
+    hideDeliveryTermsModal();
+}
+
+// Prom Payment Modal Functions
+function showPromPaymentModal() {
+    const modal = document.getElementById('prom-payment-modal');
+    modal.style.display = 'block';
+    
+    // Clear form fields
+    document.getElementById('modal-prom-url').value = '';
+    document.getElementById('modal-prom-new-order-number').value = '';
+}
+
+function hidePromPaymentModal() {
+    const modal = document.getElementById('prom-payment-modal');
+    modal.style.display = 'none';
+}
+
+function generatePromPaymentFromModal() {
+    const promDetails = getPromPaymentDetails();
+    if (promDetails === null) {
+        return; // Error already shown by getPromPaymentDetails
+    }
+    
+    const currentDate = new Date().toLocaleDateString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+    });
+    
+    const generatedText = textTemplates['prom_payment'](window.currentOrder, currentDate, promDetails);
+    
+    // Display generated text
+    const textDisplay = document.getElementById('generated-text');
+    textDisplay.textContent = generatedText;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(generatedText).then(() => {
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    }).catch(err => {
+        console.error('Помилка копіювання:', err);
+        showMessage('Помилка копіювання тексту', 'error');
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    });
+    
+    hidePromPaymentModal();
 }
 
 // Generate Check Order Text
