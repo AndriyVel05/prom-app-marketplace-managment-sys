@@ -166,28 +166,111 @@ function viewOrder(orderNumber) {
         return;
     }
 
+    // Store current order for text generation BEFORE displaying items
+    window.currentOrder = order;
+    window.isEditing = false;
+
     // Update order view
     document.getElementById('order-title').textContent = `Замовлення №${orderNumber}`;
     
-    // Display items
-    const itemsDisplay = document.getElementById('order-items-display');
-    itemsDisplay.innerHTML = '<h4>Товари:</h4>';
-    
-    order.items.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'item-display';
-        itemDiv.innerHTML = `
-            <span>${item.name}</span>
-            <span>${item.price} грн × ${item.quantity} шт</span>
-        `;
-        itemsDisplay.appendChild(itemDiv);
-    });
-
-    // Store current order for text generation
-    window.currentOrder = order;
+    // Display items with edit functionality
+    displayOrderItems(order);
 
     // Show order view
     showOrderView();
+}
+
+// Display order items with edit functionality
+function displayOrderItems(order) {
+    const itemsDisplay = document.getElementById('order-items-display');
+    itemsDisplay.innerHTML = `
+        <h4>Товари:</h4>
+        <button class="edit-order-btn" onclick="toggleEditMode()">Редагувати замовлення</button>
+        <div id="items-list"></div>
+    `;
+    
+    updateItemsDisplay();
+}
+
+// Update items display based on edit mode
+function updateItemsDisplay() {
+    const itemsList = document.getElementById('items-list');
+    const order = window.currentOrder;
+    
+    // Safety check
+    if (!order || !order.items) {
+        console.error('No order or items found');
+        return;
+    }
+    
+    itemsList.innerHTML = '';
+    
+    order.items.forEach((item, index) => {
+        const itemDiv = document.createElement('div');
+        
+        if (window.isEditing) {
+            itemDiv.className = 'item-display-editable';
+            itemDiv.innerHTML = `
+                <input type="text" value="${item.name}" data-field="name" data-index="${index}">
+                <input type="number" value="${item.price}" step="0.01" data-field="price" data-index="${index}">
+                <input type="number" value="${item.quantity}" data-field="quantity" data-index="${index}">
+                <button class="save-item-btn" onclick="saveItemChanges(${index})">✓</button>
+            `;
+        } else {
+            itemDiv.className = 'item-display';
+            itemDiv.innerHTML = `
+                <span>${item.name}</span>
+                <span>${item.price} грн × ${item.quantity} шт</span>
+            `;
+        }
+        
+        itemsList.appendChild(itemDiv);
+    });
+}
+
+// Toggle edit mode
+function toggleEditMode() {
+    window.isEditing = !window.isEditing;
+    const editBtn = document.querySelector('.edit-order-btn');
+    
+    if (window.isEditing) {
+        editBtn.textContent = 'Скасувати редагування';
+        editBtn.style.background = '#e74c3c';
+    } else {
+        editBtn.textContent = 'Редагувати замовлення';
+        editBtn.style.background = '#f39c12';
+    }
+    
+    updateItemsDisplay();
+}
+
+// Save changes to a specific item
+function saveItemChanges(itemIndex) {
+    const nameInput = document.querySelector(`input[data-field="name"][data-index="${itemIndex}"]`);
+    const priceInput = document.querySelector(`input[data-field="price"][data-index="${itemIndex}"]`);
+    const quantityInput = document.querySelector(`input[data-field="quantity"][data-index="${itemIndex}"]`);
+    
+    const name = nameInput.value.trim();
+    const price = parseFloat(priceInput.value) || 0;
+    const quantity = parseInt(quantityInput.value) || 0;
+    
+    if (!name || price <= 0 || quantity <= 0) {
+        showMessage('Некоректні дані. Перевірте назву, ціну та кількість.', 'error');
+        return;
+    }
+    
+    // Update the order data
+    window.currentOrder.items[itemIndex] = { name, price, quantity };
+    window.currentOrder.dateModified = new Date().toISOString();
+    
+    // Save to database
+    db.saveOrder(window.currentOrder.orderNumber, window.currentOrder);
+    
+    // Show success message
+    showMessage('Зміни збережено!', 'success');
+    
+    // Update display
+    updateItemsDisplay();
 }
 
 function showOrderView() {
@@ -206,43 +289,45 @@ function goBack() {
 // Text Generation Templates
 const textTemplates = {
     availability_request: (order, date) => `
-Дата: ${date}
-
 Доброго дня!
 
-Запитую про наявність товарів із замовлення №${order.orderNumber}:
+Контактуємо щодо вашого замовлення № ${order.orderNumber}. Уточнюємо на складі наявність наступних позицій: ${order.items.map(item => item.name).join(', ')}. Як тільки отримаємо актуальну інформацію - одразу повідомимо в чаті. 😊
 
-${order.items.map(item => `- ${item.name} (${item.quantity} шт)`).join('\n')}
-
-Дякую за відповідь!
+З повагою,
+Команда All For You
     `.trim(),
 
-    availability_confirmation: (order, date) => `
-Дата: ${date}
-
+    availability_confirmation: (order, date, originalPrices) => {
+        let itemsText = order.items.map(item => {
+            const originalPrice = originalPrices && originalPrices[item.name];
+            const priceText = originalPrice && originalPrice !== item.price ? 
+                `${item.price} грн` : 'вартість актуальна';
+            return `вартість ${item.name} - ${priceText}`;
+        }).join(', ');
+        
+        return `
 Доброго дня!
 
-Підтверджую наявність товарів із замовлення №${order.orderNumber}:
+Отримали актуальну інформацію стосовно вашого запиту, ${itemsText}, товар у наявності на складі. Підтверджуєте дане замовлення?
+        `.trim();
+    },
 
-${order.items.map(item => `- ${item.name} (${item.quantity} шт) - В НАЯВНОСТІ`).join('\n')}
-
-Загальна сума: ${order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)} грн
-
-Готові до відправки!
-    `.trim(),
-
-    order_only: (order, date) => `
-Дата: ${date}
-
+    order_only: (order, date, originalPrices, deliveryTerm) => {
+        let itemsText = order.items.map(item => {
+            const originalPrice = originalPrices && originalPrices[item.name];
+            const priceText = originalPrice && originalPrice !== item.price ? 
+                `${item.price} грн` : 'вартість актуальна';
+            return `вартість ${item.name} - ${priceText}`;
+        }).join(', ');
+        
+        const term = deliveryTerm || '7-10 робочих днів';
+        
+        return `
 Доброго дня!
 
-Товари із замовлення №${order.orderNumber} доступні тільки під замовлення:
-
-${order.items.map(item => `- ${item.name} (${item.quantity} шт)`).join('\n')}
-
-Термін поставки: 5-7 робочих днів після оплати.
-Дякую за розуміння!
-    `.trim(),
+Отримали актуальну інформацію стосовно вашого запиту, ${itemsText}, товар у наявності. Підтверджуєте дане замовлення?, терміни доставки: під замовлення (${term}). Бажаєте замовити?
+        `.trim();
+    },
 
     unavailable: (order, date) => `
 Дата: ${date}
@@ -325,13 +410,39 @@ function generateText(templateType) {
         return;
     }
 
+    // Show delivery terms selection for order_only template
+    if (templateType === 'order_only') {
+        const deliverySection = document.getElementById('delivery-terms-section');
+        if (deliverySection.style.display === 'none') {
+            deliverySection.style.display = 'block';
+            showMessage('Оберіть терміни доставки перед генерацією тексту', 'error');
+            return;
+        }
+    }
+
     const currentDate = new Date().toLocaleDateString('uk-UA', {
         day: '2-digit',
         month: '2-digit', 
         year: 'numeric'
     });
 
-    const generatedText = textTemplates[templateType](window.currentOrder, currentDate);
+    let generatedText;
+    
+    // Handle templates that require additional parameters
+    if (templateType === 'availability_confirmation' || templateType === 'order_only') {
+        // For these templates, we need to determine if prices changed
+        // Since we don't have original prices stored, we'll assume they're current
+        const originalPrices = null; // Could be implemented to track price changes
+        
+        if (templateType === 'order_only') {
+            const deliveryTerm = getSelectedDeliveryTerm();
+            generatedText = textTemplates[templateType](window.currentOrder, currentDate, originalPrices, deliveryTerm);
+        } else {
+            generatedText = textTemplates[templateType](window.currentOrder, currentDate, originalPrices);
+        }
+    } else {
+        generatedText = textTemplates[templateType](window.currentOrder, currentDate);
+    }
     
     // Display generated text
     const textDisplay = document.getElementById('generated-text');
@@ -352,28 +463,63 @@ function generateText(templateType) {
         document.body.removeChild(textArea);
         showMessage('Текст скопійовано в буфер обміну!', 'success');
     });
+    
+    // Hide delivery terms section after generation
+    if (templateType === 'order_only') {
+        document.getElementById('delivery-terms-section').style.display = 'none';
+    }
+}
+
+// Get selected delivery term
+function getSelectedDeliveryTerm() {
+    const selectedRadio = document.querySelector('input[name="delivery-term"]:checked');
+    if (selectedRadio.value === 'custom') {
+        const customTerm = document.getElementById('custom-delivery-term').value.trim();
+        return customTerm || '7-10 робочих днів';
+    }
+    return selectedRadio.value;
 }
 
 // Show messages
 function showMessage(message, type = 'success') {
-    // Remove existing messages
-    const existingMessages = document.querySelectorAll('.message');
-    existingMessages.forEach(msg => msg.remove());
+    // Check if we're in order view to use fixed notification area
+    const orderView = document.getElementById('order-view');
+    const notificationArea = document.getElementById('notification-area');
+    
+    if (orderView && orderView.classList.contains('active') && notificationArea) {
+        // Use fixed notification area in order view
+        notificationArea.innerHTML = '';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        notificationArea.appendChild(messageDiv);
+        
+        // Remove message after 5 seconds
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    } else {
+        // Use original method for other tabs
+        // Remove existing messages
+        const existingMessages = document.querySelectorAll('.message');
+        existingMessages.forEach(msg => msg.remove());
 
-    // Create new message
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}`;
-    messageDiv.textContent = message;
+        // Create new message
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
 
-    // Add to current active tab
-    const activeTab = document.querySelector('.tab-content.active');
-    const formSection = activeTab.querySelector('.form-section');
-    formSection.insertBefore(messageDiv, formSection.firstChild);
+        // Add to current active tab
+        const activeTab = document.querySelector('.tab-content.active');
+        const formSection = activeTab.querySelector('.form-section');
+        formSection.insertBefore(messageDiv, formSection.firstChild);
 
-    // Remove message after 5 seconds
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 5000);
+        // Remove message after 5 seconds
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    }
 }
 
 // Initialize the app
