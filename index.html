@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор текстів для замовлень</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Генератор текстів</h1>
+        </header>
+        
+        <nav class="tabs">
+            <button class="tab-button active" onclick="showTab('add-order')">Нове замовлення</button>
+            <button class="tab-button" onclick="showTab('search-order')">Пошук замовлення</button>
+        </nav>
+
+        <!-- Add New Order Tab -->
+        <div id="add-order" class="tab-content active">
+            <div class="form-section">
+                <h3>Додати нове замовлення</h3>
+                <div class="form-group">
+                    <label for="order-number">Номер замовлення:</label>
+                    <input type="text" id="order-number" placeholder="Введіть номер замовлення">
+                </div>
+                
+                <div class="items-section">
+                    <h4>Товари</h4>
+                    <div id="items-container">
+                        <div class="item-row">
+                            <input type="text" placeholder="Назва товару" class="item-name">
+                            <input type="number" placeholder="Ціна" class="item-price" step="0.01">
+                            <input type="number" placeholder="Кількість" class="item-quantity">
+                            <button type="button" class="remove-item" onclick="removeItem(this)">×</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addItem()">+ Додати товар</button>
+                </div>
+                
+                <button class="save-order-btn" onclick="saveOrder()">Зберегти замовлення</button>
+            </div>
+        </div>
+
+        <!-- Search Order Tab -->
+        <div id="search-order" class="tab-content">
+            <div class="form-section">
+                <h3>Пошук замовлення</h3>
+                <div class="form-group">
+                    <label for="search-order-number">Номер замовлення:</label>
+                    <input type="text" id="search-order-number" placeholder="Введіть номер замовлення">
+                    <button onclick="searchOrder()">Знайти</button>
+                </div>
+                
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </div>
+
+        <!-- Order View -->
+        <div id="order-view" class="tab-content">
+            <div class="form-section">
+                <h3 id="order-title">Замовлення №</h3>
+                <div id="order-items-display"></div>
+                
+                <div class="text-generation">
+                    <h4>Генерація тексту</h4>
+                    <div class="button-grid">
+                        <button class="gen-btn" onclick="generateText('availability_request')">Запит про наявність</button>
+                        <button class="gen-btn" onclick="generateText('availability_confirmation')">Підтвердження наявності</button>
+                        <button class="gen-btn" onclick="generateText('order_only')">Тільки під замовлення</button>
+                        <button class="gen-btn" onclick="generateText('unavailable')">Товар недоступний</button>
+                        <button class="gen-btn" onclick="generateText('payment_question')">Запитання про оплату</button>
+                        <button class="gen-btn" onclick="generateText('price_terms')">Уточнення ціни і термінів</button>
+                        <button class="gen-btn" onclick="generateText('prom_payment')">Оплата через Prom</button>
+                        <button class="gen-btn" onclick="generateText('advance_payment')">Оплата авансу 7%</button>
+                    </div>
+                </div>
+                
+                <div id="generated-text" class="generated-text"></div>
+                <button onclick="goBack()">← Назад до пошуку</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
