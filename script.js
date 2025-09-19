@@ -170,6 +170,10 @@ function viewOrder(orderNumber) {
     window.currentOrder = order;
     window.isEditing = false;
 
+    // Reset delivery terms section to initial state
+    const deliverySection = document.getElementById('delivery-terms-section');
+    deliverySection.style.display = 'none';
+
     // Update order view
     document.getElementById('order-title').textContent = `Замовлення №${orderNumber}`;
     
@@ -301,7 +305,7 @@ const textTemplates = {
         let itemsText = order.items.map(item => {
             const originalPrice = originalPrices && originalPrices[item.name];
             const priceText = originalPrice && originalPrice !== item.price ? 
-                `${item.price} грн` : 'вартість актуальна';
+                `${item.price} грн` : 'актуальна';
             return `вартість ${item.name} - ${priceText}`;
         }).join(', ');
         
@@ -316,8 +320,8 @@ const textTemplates = {
         let itemsText = order.items.map(item => {
             const originalPrice = originalPrices && originalPrices[item.name];
             const priceText = originalPrice && originalPrice !== item.price ? 
-                `${item.price} грн` : 'вартість актуальна';
-            return `вартість ${item.name} - ${priceText}`;
+                `${item.price} грн` : 'актуальна';
+            return `${item.name} - ${priceText}`;
         }).join(', ');
         
         const term = deliveryTerm || '7-10 робочих днів';
@@ -330,46 +334,24 @@ const textTemplates = {
     },
 
     unavailable: (order, date) => `
-Дата: ${date}
-
 Доброго дня!
 
-На жаль, деякі товари з замовлення №${order.orderNumber} тимчасово недоступні:
-
-${order.items.map(item => `- ${item.name} (${item.quantity} шт) - НЕДОСТУПНИЙ`).join('\n')}
-
-Прошу вибачення за незручності. Повідомимо про надходження.
+Отримали актуальну інформацію стосовно вашого запиту, на жаль ${order.items.map(item => item.name).join(', ')} немає у наявності, під замовлення привезти товар також неможливо. Чи можемо пропонувати альтернативи?
     `.trim(),
 
-    payment_question: (order, date) => `
-Дата: ${date}
+    payment_question: (order, date) => {
+        const totalAmount = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const advanceAmount = Math.round(totalAmount * 0.07);
+        
+        return `
+Для товарів у статусі «Під замовлення» доступні два варіанти оплати:
 
-Доброго дня!
+1. Пром-Оплата (повна оплата через додаток Prom)
+2. Оплата авансу у розмірі 7% від вартості товару, залишок оплачується при отриманні, ${advanceAmount} грн сума авансу для вашого замовлення
 
-Щодо оплати замовлення №${order.orderNumber}:
-
-${order.items.map(item => `- ${item.name}: ${item.price} грн × ${item.quantity} = ${item.price * item.quantity} грн`).join('\n')}
-
-Загальна сума: ${order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)} грн
-
-Як зручніше оплатити? Готівка, картка або переказ?
-    `.trim(),
-
-    price_terms: (order, date) => `
-Дата: ${date}
-
-Доброго дня!
-
-Уточнення ціни та термінів для замовлення №${order.orderNumber}:
-
-${order.items.map(item => `- ${item.name}: ${item.price} грн за шт (${item.quantity} шт = ${item.price * item.quantity} грн)`).join('\n')}
-
-Загальна сума: ${order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)} грн
-Термін виконання: 2-3 робочі дні
-Доставка: за домовленістю
-
-Чи підходять ці умови?
-    `.trim(),
+Як вам буде зручніше оплатити?
+        `.trim();
+    },
 
     prom_payment: (order, date) => `
 Дата: ${date}
@@ -410,14 +392,18 @@ function generateText(templateType) {
         return;
     }
 
-    // Show delivery terms selection for order_only template
+    // For order_only template, handle delivery terms selection
     if (templateType === 'order_only') {
         const deliverySection = document.getElementById('delivery-terms-section');
-        if (deliverySection.style.display === 'none') {
+        
+        // If delivery section is not visible, show it WITHOUT error message
+        if (deliverySection.style.display === 'none' || !deliverySection.style.display) {
             deliverySection.style.display = 'block';
-            showMessage('Оберіть терміни доставки перед генерацією тексту', 'error');
-            return;
+            return; // Just return without showing error message
         }
+        
+        // Delivery section is visible, check if user has made a selection
+        // (this will be validated by getSelectedDeliveryTerm function)
     }
 
     const currentDate = new Date().toLocaleDateString('uk-UA', {
@@ -436,6 +422,9 @@ function generateText(templateType) {
         
         if (templateType === 'order_only') {
             const deliveryTerm = getSelectedDeliveryTerm();
+            if (deliveryTerm === null) {
+                return; // Error already shown by getSelectedDeliveryTerm
+            }
             generatedText = textTemplates[templateType](window.currentOrder, currentDate, originalPrices, deliveryTerm);
         } else {
             generatedText = textTemplates[templateType](window.currentOrder, currentDate, originalPrices);
@@ -466,16 +455,28 @@ function generateText(templateType) {
     
     // Hide delivery terms section after generation
     if (templateType === 'order_only') {
-        document.getElementById('delivery-terms-section').style.display = 'none';
+        // Don't hide immediately to avoid layout shift, let user see the selection
+        // The section will be hidden when they navigate away or view another order
+        // document.getElementById('delivery-terms-section').style.display = 'none';
     }
 }
 
 // Get selected delivery term
 function getSelectedDeliveryTerm() {
     const selectedRadio = document.querySelector('input[name="delivery-term"]:checked');
+    if (!selectedRadio) {
+        // No delivery term selected - show error
+        showMessage('Оберіть терміни доставки перед генерацією тексту', 'error');
+        return null;
+    }
+    
     if (selectedRadio.value === 'custom') {
         const customTerm = document.getElementById('custom-delivery-term').value.trim();
-        return customTerm || '7-10 робочих днів';
+        if (!customTerm) {
+            showMessage('Введіть користувацький термін доставки', 'error');
+            return null;
+        }
+        return customTerm;
     }
     return selectedRadio.value;
 }
