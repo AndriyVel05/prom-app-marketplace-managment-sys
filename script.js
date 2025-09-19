@@ -170,9 +170,16 @@ function viewOrder(orderNumber) {
     window.currentOrder = order;
     window.isEditing = false;
 
-    // Reset delivery terms section to initial state
+    // Reset both sections to initial state
     const deliverySection = document.getElementById('delivery-terms-section');
     deliverySection.style.display = 'none';
+    
+    const promSection = document.getElementById('prom-payment-section');
+    promSection.style.display = 'none';
+    
+    // Clear Prom payment inputs
+    document.getElementById('prom-url').value = '';
+    document.getElementById('prom-new-order-number').value = '';
 
     // Update order view
     document.getElementById('order-title').textContent = `Замовлення №${orderNumber}`;
@@ -290,6 +297,19 @@ function goBack() {
     showTab('search-order');
 }
 
+// Time-based greeting function
+function getTimeBasedGreeting() {
+    const currentHour = new Date().getHours();
+    
+    if (currentHour >= 5 && currentHour < 12) {
+        return 'ранку';
+    } else if (currentHour >= 12 && currentHour < 18) {
+        return 'дня';
+    } else {
+        return 'вечора';
+    }
+}
+
 // Text Generation Templates
 const textTemplates = {
     availability_request: (order, date) => `
@@ -353,36 +373,45 @@ const textTemplates = {
         `.trim();
     },
 
-    prom_payment: (order, date) => `
-Дата: ${date}
-
+    prom_payment: (order, date, promDetails) => `
 Доброго дня!
 
-Для оплати замовлення №${order.orderNumber} через Prom:
-
-Сума до оплати: ${order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)} грн
-
-Будь ласка, оплатіть через систему Prom.ua. 
-Після підтвердження оплати - негайно приступимо до комплектації.
-
-Дякую!
+Створили нове замовлення №${promDetails.newOrderNumber}. Можете оплатити замовлення або в особистому кабінеті (замовлення №${order.orderNumber}), або ж за посиланням: ${promDetails.url}
     `.trim(),
 
-    advance_payment: (order, date) => `
-Дата: ${date}
+    advance_payment: (order, date) => {
+        const totalAmount = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const advanceAmount = Math.round(totalAmount * 0.07);
+        const greeting = getTimeBasedGreeting();
+        
+        // Generate itemized list
+        const itemsList = order.items.map((item, index) => 
+            `${index + 1}. ${item.name} ${item.quantity} шт`
+        ).join('\n');
+        
+        return `
+Ціна: ${totalAmount} грн
 
-Доброго дня!
+Оплата авансу за:
+${itemsList}
 
-Для замовлення №${order.orderNumber} потрібна передоплата 7%:
+До сплати ${advanceAmount} грн
 
-Загальна сума замовлення: ${order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)} грн
-Сума авансу (7%): ${Math.round(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) * 0.07)} грн
+Отримувач: ФОП Бурий Роман Степанович
+IBAN: UA043220010000026008330133525
+ІПН/ЄДРПОУ: 3274904630
+Акціонерне товариство: УНІВЕРСАЛ БАНК
+МФО: 322001
+ЄДРПОУ Банку: 21133352
+Призначення: Оплата авансу за замовлення
 
-Після внесення авансу - резервуємо товар і почнемо підготовку.
-Решту доплачуєте при отриманні.
+Після оплати надішліть будь ласка квитанцію.
 
-Реквізити для авансу надішлю окремо.
-    `.trim()
+Дякуємо за замовлення!
+
+Гарного вам ${greeting} 😊
+        `.trim();
+    }
 };
 
 // Generate and copy text
@@ -404,6 +433,20 @@ function generateText(templateType) {
         
         // Delivery section is visible, check if user has made a selection
         // (this will be validated by getSelectedDeliveryTerm function)
+    }
+
+    // For prom_payment template, handle Prom payment details section
+    if (templateType === 'prom_payment') {
+        const promSection = document.getElementById('prom-payment-section');
+        
+        // If Prom section is not visible, show it WITHOUT error message
+        if (promSection.style.display === 'none' || !promSection.style.display) {
+            promSection.style.display = 'block';
+            return; // Just return without showing error message
+        }
+        
+        // Prom section is visible, check if user has filled the details
+        // (this will be validated by getPromPaymentDetails function)
     }
 
     const currentDate = new Date().toLocaleDateString('uk-UA', {
@@ -429,6 +472,12 @@ function generateText(templateType) {
         } else {
             generatedText = textTemplates[templateType](window.currentOrder, currentDate, originalPrices);
         }
+    } else if (templateType === 'prom_payment') {
+        const promDetails = getPromPaymentDetails();
+        if (promDetails === null) {
+            return; // Error already shown by getPromPaymentDetails
+        }
+        generatedText = textTemplates[templateType](window.currentOrder, currentDate, promDetails);
     } else {
         generatedText = textTemplates[templateType](window.currentOrder, currentDate);
     }
@@ -453,11 +502,15 @@ function generateText(templateType) {
         showMessage('Текст скопійовано в буфер обміну!', 'success');
     });
     
-    // Hide delivery terms section after generation
+    // Hide sections after generation
     if (templateType === 'order_only') {
         // Don't hide immediately to avoid layout shift, let user see the selection
         // The section will be hidden when they navigate away or view another order
         // document.getElementById('delivery-terms-section').style.display = 'none';
+    }
+    if (templateType === 'prom_payment') {
+        // Don't hide immediately to avoid layout shift
+        // document.getElementById('prom-payment-section').style.display = 'none';
     }
 }
 
@@ -479,6 +532,24 @@ function getSelectedDeliveryTerm() {
         return customTerm;
     }
     return selectedRadio.value;
+}
+
+// Get Prom payment details
+function getPromPaymentDetails() {
+    const urlInput = document.getElementById('prom-url').value.trim();
+    const newOrderNumber = document.getElementById('prom-new-order-number').value.trim();
+    
+    if (!urlInput) {
+        showMessage('Введіть URL для оплати', 'error');
+        return null;
+    }
+    
+    if (!newOrderNumber) {
+        showMessage('Введіть новий номер замовлення', 'error');
+        return null;
+    }
+    
+    return { url: urlInput, newOrderNumber: newOrderNumber };
 }
 
 // Show messages
