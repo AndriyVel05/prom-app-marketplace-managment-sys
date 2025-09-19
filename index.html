@@ -98,6 +98,39 @@
                         <button class="gen-btn" onclick="generateText('payment_question')">Запит на оплату замовлення (PROM | 7%)</button>
                         <button class="gen-btn" onclick="generateText('prom_payment')">Оплата через Prom</button>
                         <button class="gen-btn" onclick="generateText('advance_payment')">Оплата авансу 7%</button>
+                        <button class="gen-btn" onclick="showCheckOrderModal()">Чек замовлення</button>
+                    </div>
+                </div>
+                
+                <!-- Check Order Modal (hidden by default) -->
+                <div id="check-order-modal" class="check-order-modal" style="display: none;">
+                    <div class="modal-content">
+                        <h4>Чек замовлення</h4>
+                        <div class="payment-options">
+                            <label><input type="radio" name="payment-type" value="advance" checked> Аванс 7%</label>
+                            <label><input type="radio" name="payment-type" value="prom"> Пром-Оплата</label>
+                        </div>
+                        
+                        <div class="customer-details">
+                            <h5>Деталі замовлення:</h5>
+                            <div class="form-group">
+                                <label for="customer-address">Адреса:</label>
+                                <input type="text" id="customer-address" placeholder="Введіть адресу">
+                            </div>
+                            <div class="form-group">
+                                <label for="customer-phone">Номер телефону:</label>
+                                <input type="text" id="customer-phone" placeholder="Введіть номер телефону">
+                            </div>
+                            <div class="form-group">
+                                <label for="customer-name">Ім'я та прізвище:</label>
+                                <input type="text" id="customer-name" placeholder="Введіть ім'я та прізвище">
+                            </div>
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button class="gen-btn" onclick="generateCheckOrder()">Згенерувати чек</button>
+                            <button class="cancel-btn" onclick="hideCheckOrderModal()">Скасувати</button>
+                        </div>
                     </div>
                 </div>
                 

@@ -359,3 +359,120 @@ button:hover {
 .edit-order-btn:hover {
     background: #d68910;
 }
+
+/* Check Order Modal Styles */
+.check-order-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h4 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.modal-content h5 {
+    margin: 20px 0 15px 0;
+    color: #34495e;
+    font-size: 1rem;
+}
+
+.payment-options {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.payment-options label {
+    display: block;
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.payment-options input[type="radio"] {
+    margin-right: 8px;
+    transform: scale(1.1);
+}
+
+.customer-details {
+    margin-bottom: 20px;
+}
+
+.customer-details .form-group {
+    margin-bottom: 15px;
+}
+
+.customer-details label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.customer-details input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.customer-details input[type="text"]:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.modal-buttons .gen-btn {
+    background: #27ae60;
+    flex: none;
+    padding: 10px 20px;
+}
+
+.modal-buttons .gen-btn:hover {
+    background: #219a52;
+}
+
+.cancel-btn {
+    background: #95a5a6;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+.cancel-btn:hover {
+    background: #7f8c8d;
+}

@@ -615,3 +615,113 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`Завантажено ${Object.keys(orders).length} збережених замовлень`);
     }
 });
+
+// Check Order Modal Functions
+function showCheckOrderModal() {
+    const modal = document.getElementById('check-order-modal');
+    modal.style.display = 'block';
+}
+
+function hideCheckOrderModal() {
+    const modal = document.getElementById('check-order-modal');
+    modal.style.display = 'none';
+    
+    // Clear form fields
+    document.getElementById('customer-address').value = '';
+    document.getElementById('customer-phone').value = '';
+    document.getElementById('customer-name').value = '';
+    
+    // Reset radio buttons
+    document.querySelector('input[name="payment-type"][value="advance"]').checked = true;
+}
+
+// Generate Check Order Text
+function generateCheckOrder() {
+    const order = window.currentOrder;
+    
+    if (!order || !order.items || order.items.length === 0) {
+        showMessage('Помилка: не знайдено замовлення для генерації чеку', 'error');
+        return;
+    }
+
+    // Get form values
+    const paymentType = document.querySelector('input[name="payment-type"]:checked').value;
+    const address = document.getElementById('customer-address').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const customerName = document.getElementById('customer-name').value.trim();
+
+    // Validation
+    if (!address || !phone || !customerName) {
+        showMessage('Заповніть всі поля форми', 'error');
+        return;
+    }
+
+    // Calculate totals
+    const totalPrice = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const currentDate = new Date().toLocaleDateString('uk-UA');
+
+    // Generate items list
+    const itemsList = order.items.map((item, index) => 
+        `${index + 1}. ${item.name} ${item.quantity} шт`
+    ).join('\n');
+
+    let generatedText = '';
+
+    if (paymentType === 'advance') {
+        // Advance payment calculation
+        const advance = Math.round(totalPrice * 0.07);
+        const postPayment = totalPrice - advance;
+
+        generatedText = `Під замовлення (${currentDate})
+
+Ціна : ${totalPrice} грн
+
+${itemsList}
+
+післяплата: ${postPayment} грн
+аванс: ${advance} грн (ФОП)
+загальна: ${totalPrice} грн
+
+${address}
+${phone}
+${customerName}`;
+
+    } else if (paymentType === 'prom') {
+        // Prom payment
+        generatedText = `Під замовлення (${currentDate})
+
+Ціна : ${totalPrice} грн
+
+${itemsList}
+
+післяплата: 0 грн
+аванс: 0 грн
+загальна: ${totalPrice} грн (пром-оплата)
+
+${address}
+${phone}
+${customerName}`;
+    }
+
+    // Display generated text
+    const textDisplay = document.getElementById('generated-text');
+    textDisplay.textContent = generatedText;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(generatedText).then(() => {
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    }).catch(err => {
+        console.error('Помилка копіювання:', err);
+        showMessage('Помилка копіювання тексту', 'error');
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    });
+    
+    hideCheckOrderModal();
+}
