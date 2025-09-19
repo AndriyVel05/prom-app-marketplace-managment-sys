@@ -1,0 +1,24 @@
+{
+  "name": "prom-orders-marketplace-management",
+  "version": "1.0.0",
+  "description": "Web text generator for marketplace order management",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "marketplace",
+    "orders",
+    "text-generator",
+    "prom"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
