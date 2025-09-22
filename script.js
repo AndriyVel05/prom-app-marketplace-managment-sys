@@ -830,7 +830,7 @@ function generateCheckOrder() {
 
     // Generate items list
     const itemsList = order.items.map((item, index) => 
-        `${index + 1}. ${item.name} ${item.quantity} шт`
+        `${item.name} ${item.quantity} шт`
     ).join('\n');
 
     let generatedText = '';
