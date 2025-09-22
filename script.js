@@ -33,6 +33,17 @@ class OrderDatabase {
         const orders = this.getOrders();
         return orders.hasOwnProperty(orderNumber);
     }
+
+    // Delete a specific order
+    deleteOrder(orderNumber) {
+        const orders = this.getOrders();
+        if (orders.hasOwnProperty(orderNumber)) {
+            delete orders[orderNumber];
+            this.saveOrders(orders);
+            return true;
+        }
+        return false;
+    }
 }
 
 const db = new OrderDatabase();
@@ -213,11 +224,13 @@ function updateItemsDisplay() {
         
         if (window.isEditing) {
             itemDiv.className = 'item-display-editable';
+            const canRemove = order.items.length > 1; // At least one item must remain
             itemDiv.innerHTML = `
                 <input type="text" value="${item.name}" data-field="name" data-index="${index}">
                 <input type="number" value="${item.price}" step="0.01" data-field="price" data-index="${index}">
                 <input type="number" value="${item.quantity}" data-field="quantity" data-index="${index}">
                 <button class="save-item-btn" onclick="saveItemChanges(${index})">✓</button>
+                <button class="remove-item-btn" onclick="removeOrderItem(${index})" ${canRemove ? '' : 'disabled'} title="${canRemove ? 'Видалити товар' : 'Принаймні один товар має залишитись'}">×</button>
             `;
         } else {
             itemDiv.className = 'item-display';
@@ -229,6 +242,16 @@ function updateItemsDisplay() {
         
         itemsList.appendChild(itemDiv);
     });
+
+    // Add "Add Item" button when in edit mode
+    if (window.isEditing) {
+        const addItemDiv = document.createElement('div');
+        addItemDiv.className = 'add-item-section';
+        addItemDiv.innerHTML = `
+            <button class="add-item-btn" onclick="addNewOrderItem()">+ Додати новий товар</button>
+        `;
+        itemsList.appendChild(addItemDiv);
+    }
 }
 
 // Toggle edit mode
@@ -276,6 +299,72 @@ function saveItemChanges(itemIndex) {
     updateItemsDisplay();
 }
 
+// Remove an item from the current order
+function removeOrderItem(itemIndex) {
+    if (!window.currentOrder || !window.currentOrder.items) {
+        showMessage('Помилка: не знайдено замовлення для редагування.', 'error');
+        return;
+    }
+    
+    // Ensure at least one item remains
+    if (window.currentOrder.items.length <= 1) {
+        showMessage('Не можна видалити останній товар. Замовлення повинно містити принаймні один товар.', 'error');
+        return;
+    }
+    
+    // Confirm deletion
+    if (confirm(`Видалити товар "${window.currentOrder.items[itemIndex].name}"?`)) {
+        // Remove the item
+        window.currentOrder.items.splice(itemIndex, 1);
+        window.currentOrder.dateModified = new Date().toISOString();
+        
+        // Save to database
+        db.saveOrder(window.currentOrder.orderNumber, window.currentOrder);
+        
+        // Show success message
+        showMessage('Товар видалено!', 'success');
+        
+        // Update display
+        updateItemsDisplay();
+    }
+}
+
+// Add a new empty item to the current order
+function addNewOrderItem() {
+    if (!window.currentOrder || !window.currentOrder.items) {
+        showMessage('Помилка: не знайдено замовлення для редагування.', 'error');
+        return;
+    }
+    
+    // Add new empty item
+    const newItem = {
+        name: '',
+        price: 0,
+        quantity: 1
+    };
+    
+    window.currentOrder.items.push(newItem);
+    window.currentOrder.dateModified = new Date().toISOString();
+    
+    // Save to database
+    db.saveOrder(window.currentOrder.orderNumber, window.currentOrder);
+    
+    // Show success message
+    showMessage('Новий товар додано! Заповніть його дані.', 'success');
+    
+    // Update display
+    updateItemsDisplay();
+    
+    // Focus on the new item's name field
+    setTimeout(() => {
+        const newItemIndex = window.currentOrder.items.length - 1;
+        const nameInput = document.querySelector(`input[data-field="name"][data-index="${newItemIndex}"]`);
+        if (nameInput) {
+            nameInput.focus();
+        }
+    }, 100);
+}
+
 function showOrderView() {
     // Hide all tabs
     const tabs = document.querySelectorAll('.tab-content');
@@ -289,6 +378,38 @@ function goBack() {
     // Clear the persisted order state when user explicitly goes back
     localStorage.removeItem('currentOrderNumber');
     showTab('search-order');
+}
+
+// Delete the current order
+function deleteCurrentOrder() {
+    const currentOrderNumber = localStorage.getItem('currentOrderNumber');
+    
+    if (!currentOrderNumber) {
+        showMessage('Не вдалося визначити поточне замовлення', 'error');
+        return;
+    }
+
+    // Show confirmation dialog
+    const confirmDelete = confirm(`Ви впевнені, що хочете видалити замовлення №${currentOrderNumber}? Цю дію неможливо скасувати.`);
+    
+    if (confirmDelete) {
+        // Delete the order from database
+        const deleteSuccess = db.deleteOrder(currentOrderNumber);
+        
+        if (deleteSuccess) {
+            showMessage(`Замовлення №${currentOrderNumber} успішно видалено`, 'success');
+            
+            // Clear the current order state and go back to search
+            localStorage.removeItem('currentOrderNumber');
+            
+            // Delay navigation to let user see the success message
+            setTimeout(() => {
+                showTab('search-order');
+            }, 1500);
+        } else {
+            showMessage('Помилка при видаленні замовлення', 'error');
+        }
+    }
 }
 
 // Time-based greeting function
@@ -830,7 +951,7 @@ function generateCheckOrder() {
 
     // Generate items list
     const itemsList = order.items.map((item, index) => 
-        `${index + 1}. ${item.name} ${item.quantity} шт`
+        `${item.name} ${item.quantity} шт`
     ).join('\n');
 
     let generatedText = '';
