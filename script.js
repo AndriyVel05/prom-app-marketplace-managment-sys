@@ -405,7 +405,14 @@ IBAN: UA043220010000026008330133525
 
 Гарного вам ${greeting} 😊
         `.trim();
-    }
+    },
+
+    cancellation_request: (order, date, url) => `
+Доброго дня!
+Дякуємо за ваш запит. Дуже просимо скасувати ваше замовлення або в особистому кабінеті (Сайт | Додаток Prom -> Профіль -> Мої замовлення -> Замовлення №${order.orderNumber} -> Кнопка "..." -> Скасувати замовлення. Причину обираєте будь-яку або таку яку вважаєте за потрібне. ). Або ж можете скасувати замовлення за посиланням: ${url}
+Дякуємо за довіру до нашого магазину. 
+Гарного вам дня!
+    `.trim()
 };
 
 // Generate and copy text
@@ -424,6 +431,12 @@ function generateText(templateType) {
     // For prom_payment template, show Prom payment modal
     if (templateType === 'prom_payment') {
         showPromPaymentModal();
+        return;
+    }
+
+    // For cancellation_request template, show cancellation modal
+    if (templateType === 'cancellation_request') {
+        showCancellationModal();
         return;
     }
 
@@ -691,6 +704,64 @@ function showPromPaymentModal() {
 function hidePromPaymentModal() {
     const modal = document.getElementById('prom-payment-modal');
     modal.style.display = 'none';
+}
+
+// Cancellation Request Modal Functions
+function showCancellationModal() {
+    const modal = document.getElementById('cancellation-modal');
+    modal.style.display = 'block';
+    
+    // Clear form fields
+    document.getElementById('modal-cancellation-url').value = '';
+}
+
+function hideCancellationModal() {
+    const modal = document.getElementById('cancellation-modal');
+    modal.style.display = 'none';
+}
+
+function generateCancellationFromModal() {
+    const url = document.getElementById('modal-cancellation-url').value.trim();
+    
+    if (!url) {
+        showMessage('Будь ласка, введіть URL для скасування', 'error');
+        return;
+    }
+
+    const currentDate = new Date().toLocaleDateString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+    });
+
+    const generatedText = textTemplates['cancellation_request'](window.currentOrder, currentDate, url);
+    
+    // Display generated text
+    const textDisplay = document.getElementById('generated-text');
+    textDisplay.textContent = generatedText;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(generatedText).then(() => {
+        showMessage('Текст скопійовано в буфер обміну!', 'success');
+    }).catch(err => {
+        console.error('Помилка копіювання:', err);
+        showMessage('Помилка копіювання тексту', 'error');
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedText;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showMessage('Текст скопійовано в буфер обміну!', 'success');
+        } catch (err) {
+            showMessage('Не вдалося скопіювати текст', 'error');
+        }
+        document.body.removeChild(textArea);
+    });
+    
+    hideCancellationModal();
 }
 
 function generatePromPaymentFromModal() {

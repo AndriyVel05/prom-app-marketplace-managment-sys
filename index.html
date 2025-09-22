@@ -73,6 +73,7 @@
                         <button class="gen-btn" onclick="generateText('payment_question')">Запит на оплату замовлення (PROM | 7%)</button>
                         <button class="gen-btn" onclick="generateText('prom_payment')">Оплата через Prom</button>
                         <button class="gen-btn" onclick="generateText('advance_payment')">Оплата авансу 7%</button>
+                        <button class="gen-btn" onclick="generateText('cancellation_request')">Запит на скасування замовлення</button>
                         <button class="gen-btn" onclick="showCheckOrderModal()">Чек замовлення</button>
                     </div>
                 </div>
@@ -144,6 +145,22 @@
                         <div class="modal-buttons">
                             <button class="gen-btn" onclick="generatePromPaymentFromModal()">Згенерувати текст</button>
                             <button class="cancel-btn" onclick="hidePromPaymentModal()">Скасувати</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cancellation Request Modal (hidden by default) -->
+                <div id="cancellation-modal" class="check-order-modal" style="display: none;">
+                    <div class="modal-content">
+                        <h4>Деталі для скасування замовлення</h4>
+                        <div class="form-group">
+                            <label for="modal-cancellation-url">URL для скасування:</label>
+                            <input type="text" id="modal-cancellation-url" placeholder="Введіть посилання для скасування">
+                        </div>
+                        
+                        <div class="modal-buttons">
+                            <button class="gen-btn" onclick="generateCancellationFromModal()">Згенерувати текст</button>
+                            <button class="cancel-btn" onclick="hideCancellationModal()">Скасувати</button>
                         </div>
                     </div>
                 </div>
