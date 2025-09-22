@@ -319,7 +319,7 @@ const textTemplates = {
         let itemsText = order.items.map(item => {
             const originalPrice = originalPrices && originalPrices[item.name];
             const priceText = originalPrice && originalPrice !== item.price ? 
-                `${item.price} грн` : 'актуальна';
+                `${item.price} грн` : `${item.price} грн`;
             return `вартість ${item.name} - ${priceText}`;
         }).join(', ');
         
@@ -334,8 +334,8 @@ const textTemplates = {
         let itemsText = order.items.map(item => {
             const originalPrice = originalPrices && originalPrices[item.name];
             const priceText = originalPrice && originalPrice !== item.price ? 
-                `${item.price} грн` : 'актуальна';
-            return `${item.name} - ${priceText}`;
+                `${item.price} грн` : `${item.price} грн`;
+            return `вартість ${item.name} - ${priceText}`;
         }).join(', ');
         
         const term = deliveryTerm || '7-10 робочих днів';
@@ -343,7 +343,7 @@ const textTemplates = {
         return `
 Доброго дня!
 
-Отримали актуальну інформацію стосовно вашого запиту, ${itemsText}, товар у наявності. Підтверджуєте дане замовлення?, терміни доставки: під замовлення (${term}). Бажаєте замовити?
+Отримали актуальну інформацію стосовно вашого запиту, ${itemsText}, терміни доставки: під замовлення (${term}). Бажаєте замовити?
         `.trim();
     },
 
